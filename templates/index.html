@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+    <h1>查询你喜欢的基金</h1>
+    <form class="big-search" action="/search" method="get">
+        <input type="text" name="q" placeholder="基金名称 / 代码，如：白酒、新能源、161725" autofocus>
+        <button type="submit">搜索</button>
+    </form>
+</section>
+
+<section>
+    <h2>热门基金</h2>
+    <div class="card-grid">
+        {% for f in funds %}
+        <a class="fund-card" href="/fund/{{ f.code }}">
+            <div class="fund-name">{{ f.name }}</div>
+            <div class="fund-code">{{ f.code }}</div>
+            <div class="fund-nav">{{ f.nav }}</div>
+            {# 国内习惯：涨红跌绿 #}
+            <div class="fund-change {{ 'up' if (f.change_pct or 0) >= 0 else 'down' }}">
+                {{ '%+.2f%%' % f.change_pct if f.change_pct is not none else '--' }}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

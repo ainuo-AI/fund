@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}页面不存在 - 基金信息站{% endblock %}
+{% block content %}
+<div class="empty">
+    <h1>404</h1>
+    {% if code %}
+    <p>没有找到基金代码为「{{ code }}」的基金，请检查代码是否正确。</p>
+    {% else %}
+    <p>页面不存在。</p>
+    {% endif %}
+    <p><a class="btn" href="/">返回首页</a></p>
+</div>
+{% endblock %}

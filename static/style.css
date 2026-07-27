@@ -1,0 +1,96 @@
+/* style.css —— 全站样式。国内习惯：涨红跌绿 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f6fa;
+    color: #333;
+}
+
+/* 顶部导航 */
+.navbar {
+    display: flex; align-items: center; gap: 24px;
+    background: #fff; padding: 12px 32px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    position: sticky; top: 0; z-index: 10;
+}
+.brand { font-size: 20px; font-weight: bold; color: #1a73e8; text-decoration: none; }
+.nav-search { display: flex; flex: 1; max-width: 480px; }
+.nav-search input {
+    flex: 1; padding: 8px 12px; border: 1px solid #ddd;
+    border-radius: 6px 0 0 6px; outline: none;
+}
+.nav-search button, .big-search button {
+    padding: 8px 20px; border: none; background: #1a73e8; color: #fff;
+    border-radius: 0 6px 6px 0; cursor: pointer;
+}
+.nav-search button:hover, .big-search button:hover { background: #1557b0; }
+
+.container { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; }
+h2 { margin: 28px 0 14px; font-size: 18px; }
+
+/* 首页 hero 搜索 */
+.hero { text-align: center; padding: 60px 0 30px; }
+.hero h1 { margin-bottom: 24px; }
+.big-search { display: flex; justify-content: center; }
+.big-search input {
+    width: 420px; max-width: 70vw; padding: 14px 18px; font-size: 16px;
+    border: 1px solid #ddd; border-radius: 8px 0 0 8px; outline: none;
+}
+.big-search button { font-size: 16px; border-radius: 0 8px 8px 0; }
+
+/* 基金卡片 */
+.card-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+}
+.fund-card {
+    background: #fff; border-radius: 10px; padding: 16px;
+    text-decoration: none; color: inherit;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    transition: transform .15s, box-shadow .15s;
+}
+.fund-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,.1); }
+.fund-name { font-weight: 600; font-size: 14px; margin-bottom: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fund-code { color: #999; font-size: 12px; }
+.fund-nav { font-size: 24px; font-weight: bold; margin-top: 10px; }
+.fund-change { font-size: 14px; margin-top: 4px; }
+
+/* 涨跌配色：红涨绿跌 */
+.up   { color: #e64545; }
+.down { color: #1a9e54; }
+
+/* 详情页头部 */
+.detail-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    flex-wrap: wrap; gap: 16px;
+    background: #fff; border-radius: 10px; padding: 24px; margin-top: 10px;
+}
+.code-tag {
+    font-size: 14px; color: #1a73e8; background: #e8f0fe;
+    padding: 2px 10px; border-radius: 12px; vertical-align: middle;
+}
+.meta { color: #888; font-size: 13px; margin-top: 8px; }
+.nav-box { text-align: right; }
+.nav-main { font-size: 36px; font-weight: bold; }
+.nav-sub { font-size: 13px; }
+
+/* 表格 */
+.data-table { width: 100%; border-collapse: collapse; background: #fff;
+    border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.data-table th, .data-table td { padding: 10px 14px; text-align: left; font-size: 14px; }
+.data-table thead { background: #fafbfc; color: #666; }
+.data-table tbody tr { border-top: 1px solid #f0f0f0; }
+.data-table tbody tr:hover { background: #f8faff; }
+
+.btn {
+    display: inline-block; padding: 5px 14px; font-size: 13px;
+    color: #1a73e8; border: 1px solid #1a73e8; border-radius: 6px;
+    text-decoration: none;
+}
+.btn:hover { background: #1a73e8; color: #fff; }
+
+.empty { text-align: center; padding: 80px 0; color: #888; }
+
+.footer { text-align: center; color: #aaa; font-size: 12px; padding: 24px; }

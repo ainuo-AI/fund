@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}搜索：{{ keyword }} - 基金信息站{% endblock %}
+{% block content %}
+<h2>"{{ keyword }}" 的搜索结果（共 {{ results|length }} 条）</h2>
+
+{% if results %}
+<table class="data-table">
+    <thead>
+        <tr><th>代码</th><th>名称</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for r in results %}
+        <tr>
+            <td>{{ r.code }}</td>
+            <td>{{ r.name }}</td>
+            <td><a class="btn" href="/fund/{{ r.code }}">查看详情</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty">没有找到相关基金，换个关键词试试？</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ info.name }} - 基金信息站{% endblock %}
+{% block content %}
+<!-- 基本信息卡片 -->
+<section class="detail-header">
+    <div>
+        <h1>{{ info.name }} <span class="code-tag">{{ info.code }}</span></h1>
+        <p class="meta">
+            {{ info.fund_type }} · {{ info.company }} ·
+            基金经理：{{ info.manager }} · 成立于 {{ info.start_date }} · 规模 {{ info.scale }}
+        </p>
+    </div>
+    <div class="nav-box">
+        <div class="nav-main">{{ info.nav }}</div>
+        <div class="nav-sub {{ 'up' if (info.change_pct|float(0)) >= 0 else 'down' }}">
+            日涨幅 {{ info.change_pct }}%　累计净值 {{ info.acc_nav }}　{{ info.nav_date }}
+        </div>
+    </div>
+</section>
+
+<!-- 净值走势图 -->
+<section>
+    <h2>净值走势</h2>
+    <div id="chart" style="width:100%;height:420px;"></div>
+</section>
+
+<!-- 历史净值表 -->
+<section>
+    <h2>历史净值（最近 30 条）</h2>
+    <table class="data-table">
+        <thead>
+            <tr><th>日期</th><th>单位净值</th><th>累计净值</th><th>日涨跌幅</th></tr>
+        </thead>
+        <tbody>
+            {% for row in recent %}
+            <tr>
+                <td>{{ row.date }}</td>
+                <td>{{ row.nav }}</td>
+                <td>{{ row.acc_nav }}</td>
+                <td class="{{ 'up' if (row.change_pct or 0) >= 0 else 'down' }}">
+                    {{ '%+.2f%%' % row.change_pct if row.change_pct is not none else '--' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<!-- 画图：把 Python 列表转成 JSON 交给 ECharts -->
+<script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+<script>
+    // tojson 过滤器会把 history 安全地转成 JS 数组
+    const history = {{ history | tojson }};
+    const dates   = history.map(r => r.date);
+    const navs    = history.map(r => r.nav);
+    const accNavs = history.map(r => r.acc_nav);
+
+    const chart = echarts.init(document.getElementById('chart'));
+    chart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['单位净值', '累计净值'] },
+        grid: { left: 60, right: 20, top: 40, bottom: 70 },
+        xAxis: { type: 'category', data: dates },
+        yAxis: { type: 'value', scale: true },
+        // 底部滑块可以缩放查看区间
+        dataZoom: [{ type: 'slider', start: 60, end: 100 }],
+        series: [
+            { name: '单位净值', type: 'line', data: navs,
+              showSymbol: false, lineStyle: { width: 2 } },
+            { name: '累计净值', type: 'line', data: accNavs,
+              showSymbol: false, lineStyle: { width: 1, type: 'dashed' } }
+        ]
+    });
+    // 浏览器窗口大小变化时，图表自适应
+    window.addEventListener('resize', () => chart.resize());
+</script>
+{% endblock %}

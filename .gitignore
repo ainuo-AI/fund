@@ -1,0 +1,16 @@
+# 虚拟环境：里面有上千个依赖文件，每个人的电脑都能自己重建，不上传
+venv/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 运行日志
+server.log
+*.log
+
+# 编辑器/系统杂项
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
