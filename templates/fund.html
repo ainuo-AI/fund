@@ -9,6 +9,7 @@
             {{ info.fund_type }} · {{ info.company }} ·
             基金经理：{{ info.manager }} · 成立于 {{ info.start_date }} · 规模 {{ info.scale }}
         </p>
+        <button id="favBtn" class="fav-btn" onclick="toggleFav()">☆ 加入自选</button>
     </div>
     <div class="nav-box">
         <div class="nav-main">{{ info.nav }}</div>
@@ -73,5 +74,38 @@
     });
     // 浏览器窗口大小变化时，图表自适应
     window.addEventListener('resize', () => chart.resize());
+
+    // ===== 自选基金：用浏览器 localStorage 保存，关掉浏览器也不会丢 =====
+    // tojson 把 Python 字符串安全转成 JS 字符串（自动处理引号转义）
+    const FUND_CODE = {{ info.code | tojson }};
+    const FUND_NAME = {{ info.name | tojson }};
+    const FAV_KEY = 'myFunds';  // localStorage 里的键名，首页也用它
+
+    // 读出自选列表，格式：[{code: '161725', name: '招商中证白酒...'}, ...]
+    function getFavs() {
+        try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; }
+        catch (e) { return []; }  // 数据损坏时当作空列表，不让页面报错
+    }
+    function isFav() { return getFavs().some(f => f.code === FUND_CODE); }
+
+    // 点击按钮：已自选就移除，没自选就加入，然后刷新按钮文字
+    function toggleFav() {
+        let favs = getFavs();
+        if (isFav()) {
+            favs = favs.filter(f => f.code !== FUND_CODE);
+        } else {
+            favs.push({ code: FUND_CODE, name: FUND_NAME });
+        }
+        localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+        renderFavBtn();
+    }
+
+    function renderFavBtn() {
+        const btn = document.getElementById('favBtn');
+        const faved = isFav();
+        btn.textContent = faved ? '★ 已自选（点击移除）' : '☆ 加入自选';
+        btn.classList.toggle('faved', faved);
+    }
+    renderFavBtn();  // 页面加载时先刷一次，让按钮显示正确状态
 </script>
 {% endblock %}

@@ -93,4 +93,21 @@ h2 { margin: 28px 0 14px; font-size: 18px; }
 
 .empty { text-align: center; padding: 80px 0; color: #888; }
 
+/* 返回上一页按钮（base.html 里，所有页面共用） */
+.back-btn {
+    margin-bottom: 16px; padding: 6px 14px; font-size: 13px;
+    color: #666; background: #fff; border: 1px solid #ddd;
+    border-radius: 6px; cursor: pointer;
+}
+.back-btn:hover { color: #1a73e8; border-color: #1a73e8; }
+
+/* 详情页"加入自选"按钮 */
+.fav-btn {
+    margin-top: 12px; padding: 6px 16px; font-size: 14px;
+    color: #666; background: #fff; border: 1px solid #ddd;
+    border-radius: 6px; cursor: pointer;
+}
+.fav-btn:hover { color: #e6a23c; border-color: #e6a23c; }
+.fav-btn.faved { color: #e6a23c; border-color: #e6a23c; background: #fdf6ec; }
+
 .footer { text-align: center; color: #aaa; font-size: 12px; padding: 24px; }

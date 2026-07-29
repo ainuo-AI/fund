@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{# 首页是入口页面，不需要"返回上一页"，把 back_button 区块覆盖为空 #}
+{% block back_button %}{% endblock %}
 {% block content %}
 <section class="hero">
     <h1>查询你喜欢的基金</h1>
@@ -6,6 +8,12 @@
         <input type="text" name="q" placeholder="基金名称 / 代码，如：白酒、新能源、161725" autofocus>
         <button type="submit">搜索</button>
     </form>
+</section>
+
+<!-- 我的自选：默认隐藏，JS 读到 localStorage 里有自选才显示 -->
+<section id="myfunds" style="display:none">
+    <h2>我的自选</h2>
+    <div class="card-grid" id="myfunds-grid"></div>
 </section>
 
 <section>
@@ -24,4 +32,33 @@
         {% endfor %}
     </div>
 </section>
+
+<script>
+    // 我的自选：从 localStorage 读出收藏的代码，调 /api/funds 查最新净值，动态渲染卡片
+    const FAV_KEY = 'myFunds';  // 和详情页共用的键名
+    let favs = [];
+    try { favs = JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch (e) {}
+
+    if (favs.length) {
+        const codes = favs.map(f => f.code).join(',');
+        fetch('/api/funds?codes=' + codes)
+            .then(resp => resp.json())
+            .then(data => {
+                if (!data.funds.length) return;
+                // 有数据才显示整个区块，并生成和"热门基金"一样的卡片 HTML
+                document.getElementById('myfunds').style.display = '';
+                document.getElementById('myfunds-grid').innerHTML = data.funds.map(f => {
+                    const pct = f.change_pct;
+                    const cls = (pct || 0) >= 0 ? 'up' : 'down';  // 涨红跌绿
+                    const pctText = pct == null ? '--' : (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+                    return `<a class="fund-card" href="/fund/${f.code}">
+                        <div class="fund-name">${f.name}</div>
+                        <div class="fund-code">${f.code}</div>
+                        <div class="fund-nav">${f.nav}</div>
+                        <div class="fund-change ${cls}">${pctText}</div>
+                    </a>`;
+                }).join('');
+            });
+    }
+</script>
 {% endblock %}

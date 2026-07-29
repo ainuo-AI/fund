@@ -41,6 +41,13 @@ def fund_detail(code):
                            history=history, recent=recent)
 
 
+@app.route("/api/funds")
+def api_funds():
+    """给首页"我的自选"用的小接口：/api/funds?codes=161725,005827 返回 JSON"""
+    codes = [c.strip() for c in request.args.get("codes", "").split(",") if c.strip()]
+    return {"funds": fund_api.get_hot_funds(codes) if codes else []}
+
+
 @app.errorhandler(404)
 def not_found(e):
     """所有未匹配的路径统一走这里"""

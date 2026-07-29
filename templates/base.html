@@ -18,8 +18,23 @@
     </nav>
 
     <main class="container">
+        <!-- 返回上一页：包在 block 里，子模板（如首页）可以覆盖为空来隐藏它 -->
+        {% block back_button %}
+        <button class="back-btn" onclick="goBack()">← 返回上一页</button>
+        {% endblock %}
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        function goBack() {
+            // history.length > 1 说明当前标签页里有上一页可以回退
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/';
+            }
+        }
+    </script>
 
     <footer class="footer">
         数据来源于公开接口，仅供参考，不构成投资建议
