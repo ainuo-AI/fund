@@ -110,4 +110,15 @@ h2 { margin: 28px 0 14px; font-size: 18px; }
 .fav-btn:hover { color: #e6a23c; border-color: #e6a23c; }
 .fav-btn.faved { color: #e6a23c; border-color: #e6a23c; background: #fdf6ec; }
 
+/* 首页"最近搜索"标签 */
+.history-box { margin-top: 18px; color: #888; font-size: 13px; }
+.chip {
+    display: inline-block; margin: 4px 4px 0; padding: 4px 12px;
+    background: #fff; border: 1px solid #ddd; border-radius: 14px;
+    color: #555; font-size: 13px; text-decoration: none;
+}
+.chip:hover { color: #1a73e8; border-color: #1a73e8; }
+.history-clear { margin-left: 8px; color: #aaa; font-size: 12px; }
+.history-clear:hover { color: #e64545; }
+
 .footer { text-align: center; color: #aaa; font-size: 12px; padding: 24px; }

@@ -21,4 +21,18 @@
 {% else %}
 <p class="empty">没有找到相关基金，换个关键词试试？</p>
 {% endif %}
+
+<script>
+    // ===== 记录搜索历史：每次打开搜索结果页，把当前关键词写进 localStorage =====
+    // 规则：最新搜索排最前，重复关键词只留一次，最多保留 8 条
+    const HIST_KEY = 'searchHistory';
+    const kw = {{ keyword | tojson }};  // 服务器端替换成当前搜索词
+    if (kw) {
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch (e) {}
+        list = list.filter(k => k !== kw);  // 先去掉旧记录里的同一个词
+        list.unshift(kw);                    // 再把这次的词插到最前
+        localStorage.setItem(HIST_KEY, JSON.stringify(list.slice(0, 8)));
+    }
+</script>
 {% endblock %}

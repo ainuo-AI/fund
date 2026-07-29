@@ -8,6 +8,11 @@
         <input type="text" name="q" placeholder="基金名称 / 代码，如：白酒、新能源、161725" autofocus>
         <button type="submit">搜索</button>
     </form>
+    <!-- 最近搜索：默认隐藏，localStorage 里有记录才由 JS 显示 -->
+    <div id="history-box" class="history-box" style="display:none">
+        最近搜索：<span id="history-chips"></span>
+        <a href="javascript:clearHistory()" class="history-clear">清空</a>
+    </div>
 </section>
 
 <!-- 我的自选：默认隐藏，JS 读到 localStorage 里有自选才显示 -->
@@ -60,5 +65,37 @@
                 }).join('');
             });
     }
+</script>
+
+<script>
+    // ===== 搜索历史：读 localStorage，渲染成可点击的标签 =====
+    const HIST_KEY = 'searchHistory';  // 和搜索页共用的键名
+
+    function getHistory() {
+        try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; }
+        catch (e) { return []; }
+    }
+
+    // 转义 < > &，防止关键词里的特殊字符被当成 HTML 解析
+    function esc(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderHistory() {
+        const list = getHistory();
+        if (!list.length) return;  // 没有记录就保持隐藏
+        document.getElementById('history-box').style.display = '';
+        document.getElementById('history-chips').innerHTML = list.map(kw =>
+            // encodeURIComponent 处理中文和特殊字符，拼进网址才安全
+            `<a class="chip" href="/search?q=${encodeURIComponent(kw)}">${esc(kw)}</a>`
+        ).join('');
+    }
+
+    function clearHistory() {
+        localStorage.removeItem(HIST_KEY);
+        document.getElementById('history-box').style.display = 'none';
+    }
+
+    renderHistory();  // 页面加载时渲染一次
 </script>
 {% endblock %}

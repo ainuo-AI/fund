@@ -10,11 +10,7 @@
 <body>
     <nav class="navbar">
         <a class="brand" href="/">📈 基金信息站</a>
-        <form class="nav-search" action="/search" method="get">
-            <input type="text" name="q" placeholder="输入基金名称或代码，如：白酒 / 161725"
-                   value="{{ keyword or '' }}">
-            <button type="submit">搜索</button>
-        </form>
+        <!-- 顶部搜索框已移除：首页有大搜索框，这里重复了；搜索页仍可通过 /search?q= 访问 -->
     </nav>
 
     <main class="container">
