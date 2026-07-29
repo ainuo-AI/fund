@@ -121,4 +121,34 @@ h2 { margin: 28px 0 14px; font-size: 18px; }
 .history-clear { margin-left: 8px; color: #aaa; font-size: 12px; }
 .history-clear:hover { color: #e64545; }
 
+/* 对比页表单 & 详情页对比入口 */
+.compare-form { display: flex; max-width: 560px; }
+.compare-form input {
+    flex: 1; padding: 10px 14px; border: 1px solid #ddd;
+    border-radius: 6px 0 0 6px; outline: none;
+}
+.compare-form button {
+    padding: 10px 24px; border: none; background: #1a73e8; color: #fff;
+    border-radius: 0 6px 6px 0; cursor: pointer;
+}
+.compare-form button:hover { background: #1557b0; }
+.compare-link { margin-left: 10px; }
+
+/* 对比页"按名称搜索添加" */
+.add-fund { position: relative; max-width: 560px; margin-top: 10px; }
+.add-fund input {
+    width: 100%; padding: 10px 14px; border: 1px solid #ddd;
+    border-radius: 6px; outline: none;
+}
+.add-fund input:focus { border-color: #1a73e8; }
+.suggest-list {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+    background: #fff; border: 1px solid #ddd; border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1); list-style: none; overflow: hidden;
+}
+.suggest-list:empty { display: none; }  /* 没有建议时不显示空框 */
+.suggest-list li { padding: 10px 14px; font-size: 14px; cursor: pointer; }
+.suggest-list li:hover { background: #f0f6ff; }
+.suggest-code { float: right; color: #999; font-size: 12px; }
+
 .footer { text-align: center; color: #aaa; font-size: 12px; padding: 24px; }

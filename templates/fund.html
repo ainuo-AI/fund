@@ -10,6 +10,7 @@
             基金经理：{{ info.manager }} · 成立于 {{ info.start_date }} · 规模 {{ info.scale }}
         </p>
         <button id="favBtn" class="fav-btn" onclick="toggleFav()">☆ 加入自选</button>
+        <a class="btn compare-link" href="/compare?codes={{ info.code }}">和其他基金对比 →</a>
     </div>
     <div class="nav-box">
         <div class="nav-main">{{ info.nav }}</div>

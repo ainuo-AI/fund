@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}基金对比 - 基金信息站{% endblock %}
+{% block content %}
+<h2>基金对比</h2>
+
+<!-- 输入代码的表单：GET 提交，代码出现在网址里，方便收藏和分享 -->
+<form class="compare-form" action="/compare" method="get">
+    <input type="text" name="codes" id="codesInput" value="{{ codes | join(',') }}"
+           placeholder="输入基金代码，用逗号分隔，如：161725,005827（最多 5 只）">
+    <button type="submit">对比</button>
+</form>
+
+<!-- 按名称搜索添加：不用记代码，搜到点一下就加入 -->
+<div class="add-fund">
+    <input type="text" id="searchInput" placeholder="不知道代码？输入基金名称搜索，点结果直接加入" autocomplete="off">
+    <ul id="suggestList" class="suggest-list"></ul>
+</div>
+
+{% if funds %}
+<p class="meta">近一年累计涨跌幅对比（以各自第一天净值为起点，归一化为百分比）</p>
+<div id="chart" style="width:100%;height:460px;"></div>
+{% else %}
+<p class="empty">输入 2~5 个基金代码，或在上方搜索基金名称添加</p>
+{% endif %}
+
+<script>
+    // ===== 按名称搜索添加基金 =====
+    const searchInput = document.getElementById('searchInput');
+    const suggestList = document.getElementById('suggestList');
+    const codesInput  = document.getElementById('codesInput');
+    let timer = null;
+
+    // 转义 < > &，基金名称拼进 HTML 前防特殊字符
+    function esc(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // 每次按键都发请求太浪费，用"防抖"：停止输入 300ms 后才真正搜索
+    searchInput.addEventListener('input', () => {
+        clearTimeout(timer);
+        const kw = searchInput.value.trim();
+        if (!kw) { suggestList.innerHTML = ''; return; }
+        timer = setTimeout(async () => {
+            const resp = await fetch('/api/search?q=' + encodeURIComponent(kw));
+            const data = await resp.json();
+            suggestList.innerHTML = data.results.map(r =>
+                `<li onclick="addCode('${r.code}')">${esc(r.name)}<span class="suggest-code">${r.code}</span></li>`
+            ).join('');
+        }, 300);
+    });
+
+    // 点击搜索建议：把代码追加进输入框（去重、最多 5 只），然后自动提交表单刷新图表
+    function addCode(code) {
+        let codes = codesInput.value.split(',').map(s => s.trim()).filter(Boolean);
+        if (codes.includes(code)) {           // 已在列表里，不用加
+            searchInput.value = ''; suggestList.innerHTML = '';
+            return;
+        }
+        if (codes.length >= 5) { alert('最多对比 5 只基金'); return; }
+        codes.push(code);
+        codesInput.value = codes.join(',');
+        codesInput.form.submit();             // 相当于点"对比"按钮
+    }
+
+    // 点击页面其他地方时收起搜索建议
+    document.addEventListener('click', e => {
+        if (e.target !== searchInput) suggestList.innerHTML = '';
+    });
+</script>
+
+{% if funds %}
+<script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+<script>
+    const funds = {{ funds | tojson }};
+    const chart = echarts.init(document.getElementById('chart'));
+    chart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: {},
+        grid: { left: 60, right: 20, top: 50, bottom: 70 },
+        // time 轴：每只基金用自己的日期，不用对齐交易日
+        xAxis: { type: 'time' },
+        yAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+        dataZoom: [{ type: 'slider' }],
+        // 每只基金一条线，数据是 [[日期, 涨跌幅], ...] 的二维数组
+        series: funds.map(f => ({
+            name: `${f.name}(${f.code})`,
+            type: 'line', showSymbol: false,
+            lineStyle: { width: 2 },
+            data: f.series
+        }))
+    });
+    window.addEventListener('resize', () => chart.resize());
+</script>
+{% endif %}
+{% endblock %}

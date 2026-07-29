@@ -48,6 +48,34 @@ def api_funds():
     return {"funds": fund_api.get_hot_funds(codes) if codes else []}
 
 
+@app.route("/compare")
+def compare():
+    """基金对比页：把多只基金近一年的涨跌幅画在同一张图上"""
+    codes = [c.strip() for c in request.args.get("codes", "").split(",") if c.strip()]
+    codes = list(dict.fromkeys(codes))[:5]  # 去重、最多 5 只
+    # 批量查一次名称（顺便验证代码是否存在），再逐个取历史净值
+    names = {f["code"]: f["name"] for f in fund_api.get_hot_funds(codes)} if codes else {}
+    funds = []
+    for code in codes:
+        if code not in names:
+            continue  # 代码不存在，跳过
+        history = fund_api.get_nav_history(code, pages=1)  # 最近约 1 年
+        # 归一化：以第一天为基准换算成累计涨跌幅 %，
+        # 不然 1 块钱的基金和 3 块钱的基金净值差太远，没法在一张图上比
+        base = history[0]["nav"] if history and history[0]["nav"] else None
+        series = ([[h["date"], round((h["nav"] / base - 1) * 100, 2)]
+                   for h in history if h["nav"]] if base else [])
+        funds.append({"code": code, "name": names[code], "series": series})
+    return render_template("compare.html", funds=funds, codes=codes)
+
+
+@app.route("/api/search")
+def api_search():
+    """给对比页"按名称搜索添加"用的 JSON 接口：/api/search?q=白酒"""
+    keyword = request.args.get("q", "").strip()
+    return {"results": fund_api.search_funds(keyword)[:10] if keyword else []}
+
+
 @app.errorhandler(404)
 def not_found(e):
     """所有未匹配的路径统一走这里"""
