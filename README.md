@@ -14,6 +14,7 @@ jijin/
 │   ├── search.html   #   搜索结果页
 │   ├── fund.html     #   基金详情页：信息 + 走势图 + 历史净值表
 │   ├── compare.html  #   基金对比页：多只基金涨跌幅同图对比
+│   ├── sip.html      #   定投模拟页：参数表单 + 收益汇总 + 投入/市值走势图
 │   └── 404.html
 ├── static/
 │   ├── style.css     # 全站样式
@@ -40,6 +41,7 @@ venv/Scripts/python app.py
 | `/search?q=关键词` | 搜索结果 | `search()` |
 | `/fund/161725` | 基金详情（可加自选、去对比） | `fund_detail()` |
 | `/compare?codes=161725,005827` | 基金对比（最多 5 只） | `compare()` |
+| `/sip/161725?amount=1000&freq=month&years=2` | 定投收益模拟 | `sip()` |
 | `/api/funds?codes=161725,...` | 批量查最新净值（JSON 接口） | `api_funds()` |
 | `/api/search?q=关键词` | 按名称搜索基金（JSON 接口） | `api_search()` |
 
@@ -61,6 +63,13 @@ venv/Scripts/python app.py
 由 `fund_api.calc_interval_returns` 根据已获取的历史净值计算：以最新净值为终点，
 找 N 个月前当天或之前最近交易日的净值做起点；历史数据不足的区间显示 `--`。
 
+## 定投收益模拟
+
+在基金详情页点"定投模拟 →"，设置每期金额（默认 1000 元）、频率（每周/每两周/每月）和年限（1~5 年），
+即可看到累计投入、当前市值、收益和收益率，以及"累计投入 vs 当前市值"走势图。
+由 `fund_api.calc_sip` 用历史净值计算：每次按扣款日之后第一个交易日的净值买入，
+未考虑申购赎回费用和分红，结果仅供学习参考。参数在网址里，可以收藏和分享。
+
 ## 基金对比
 
 把 2~5 只基金的近一年累计涨跌幅画在同一张图上（以各自第一天为起点归一化成百分比，价位不同的基金才能公平比较）。
@@ -78,4 +87,4 @@ venv/Scripts/python app.py
 ## 可以练手的改进方向
 
 1. 首页热门基金换成你自己关注的代码（改 `app.py` 里的 `HOT_FUND_CODES`）
-2. 用 `fund_api.get_nav_history` 做定投收益模拟计算
+2. 给定投模拟加分红再投资选项（用累计净值 `acc_nav` 计算）

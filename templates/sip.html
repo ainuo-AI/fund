@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}定投模拟 - {{ info.name }} - 基金信息站{% endblock %}
+{% block content %}
+<h2>定投模拟：{{ info.name }} <span class="code-tag">{{ info.code }}</span></h2>
+
+<!-- 参数表单：GET 提交，参数出现在网址里，方便收藏和分享 -->
+<form class="sip-form" action="/sip/{{ info.code }}" method="get">
+    每期 <input type="number" name="amount" value="{{ amount }}" min="1" max="1000000" style="width:100px"> 元，
+    <select name="freq">
+        <option value="week" {{ 'selected' if freq == 'week' }}>每周</option>
+        <option value="biweek" {{ 'selected' if freq == 'biweek' }}>每两周</option>
+        <option value="month" {{ 'selected' if freq == 'month' }}>每月</option>
+    </select>
+    定投，坚持
+    <select name="years">
+        {% for y in [1, 2, 3, 4, 5] %}
+        <option value="{{ y }}" {{ 'selected' if years == y }}>{{ y }} 年</option>
+        {% endfor %}
+    </select>
+    <button type="submit">开始模拟</button>
+</form>
+
+{% if result %}
+<!-- 结果汇总 -->
+<table class="data-table">
+    <thead>
+        <tr><th>定投区间</th><th>次数</th><th>累计投入</th><th>当前市值</th><th>收益</th><th>收益率</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ result.start }} ~ {{ result.end }}</td>
+            <td>{{ result.count }} 期</td>
+            <td>{{ '%.2f' | format(result.invested) }} 元</td>
+            <td>{{ '%.2f' | format(result.value) }} 元</td>
+            <td class="{{ 'up' if result.profit >= 0 else 'down' }}">
+                {{ '%+.2f' | format(result.profit) }} 元
+            </td>
+            <td class="{{ 'up' if result.pct >= 0 else 'down' }}">{{ '%+.2f%%' | format(result.pct) }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- 投入本金 vs 市值走势 -->
+<div id="chart" style="width:100%;height:420px;margin-top:20px;"></div>
+
+<p class="meta" style="margin-top:10px">
+    说明：按扣款日之后第一个交易日的净值买入，未考虑申购赎回费用和分红，结果仅供学习参考。
+</p>
+
+<script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+<script>
+    // series 是 [[日期, 累计投入, 当时市值], ...]
+    const series = {{ result.series | tojson }};
+    const chart = echarts.init(document.getElementById('chart'));
+    chart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['累计投入', '当前市值'] },
+        grid: { left: 80, right: 20, top: 40, bottom: 70 },
+        xAxis: { type: 'time' },
+        yAxis: { type: 'value', axisLabel: { formatter: '{value} 元' } },
+        dataZoom: [{ type: 'slider' }],
+        series: [
+            { name: '累计投入', type: 'line', showSymbol: false,
+              data: series.map(r => [r[0], r[1]]),
+              lineStyle: { width: 1, type: 'dashed' } },
+            { name: '当前市值', type: 'line', showSymbol: false,
+              data: series.map(r => [r[0], r[2]]),
+              lineStyle: { width: 2 } }
+        ]
+    });
+    window.addEventListener('resize', () => chart.resize());
+</script>
+{% else %}
+<p class="empty">历史净值数据不足，无法模拟</p>
+{% endif %}
+{% endblock %}

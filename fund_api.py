@@ -10,12 +10,22 @@ fund_api.py —— 基金数据层
   - 新浪财经（stock.finance.sina.com.cn）：基金概况（类型、规模、公司等）
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import requests
 
 # 所有请求共用的请求头：User-Agent 模拟浏览器，避免被当成爬虫拒绝
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+
+def _get_json(url, params):
+    """GET 请求并解析 JSON。外网接口偶尔 SSL 抖动导致 EOF，失败时重试一次"""
+    for attempt in range(2):
+        try:
+            return requests.get(url, params=params, headers=HEADERS, timeout=10).json()
+        except requests.RequestException:
+            if attempt == 1:
+                raise
 
 # 天天基金移动端 API 需要的固定参数（相当于一个公共的"客户端标识"）
 EM_COMMON_PARAMS = {
@@ -30,12 +40,9 @@ EM_COMMON_PARAMS = {
 def search_funds(keyword):
     """按关键词搜索基金，返回 [{'code': '161725', 'name': '招商中证白酒...'}, ...]"""
     url = "https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx"
-    resp = requests.get(url, params={"m": 1, "key": keyword},
-                        headers=HEADERS, timeout=10)
-    data = resp.json()
+    data = _get_json(url, {"m": 1, "key": keyword})
     results = []
     for item in data.get("Datas") or []:
-        # CATEGORY 700 表示公募基金，过滤掉其他类别的干扰项
         results.append({"code": item["CODE"], "name": item["NAME"]})
     return results
 
@@ -56,8 +63,7 @@ def get_fund_info(code):
     # 第一部分：最新净值（东财移动端接口，支持一次查多只，这里只查一只）
     nav_url = "https://fundmobapi.eastmoney.com/FundMNewApi/FundMNFInfo"
     nav_params = {"pageIndex": 1, "pageSize": 1, "Fcodes": code, **EM_COMMON_PARAMS}
-    nav_resp = requests.get(nav_url, params=nav_params, headers=HEADERS, timeout=10)
-    nav_rows = nav_resp.json().get("Datas") or []
+    nav_rows = _get_json(nav_url, nav_params).get("Datas") or []
     if not nav_rows:
         return None  # 基金代码不存在
     row = nav_rows[0]
@@ -75,9 +81,8 @@ def get_fund_info(code):
     try:
         sina_url = ("https://stock.finance.sina.com.cn/fundInfo/api/openapi.php/"
                     "FundPageInfoService.tabjjgk")
-        sina_resp = requests.get(sina_url, params={"symbol": code, "format": "json"},
-                                 headers=HEADERS, timeout=10)
-        d = sina_resp.json()["result"]["data"]
+        sina_resp = _get_json(sina_url, {"symbol": code, "format": "json"})
+        d = sina_resp["result"]["data"]
         info.update({
             "fund_type": d.get("Type2Name") or "--",        # 基金类型（股票型/混合型...）
             "scale": f"{d.get('jjgm')}亿" if d.get("jjgm") else "--",  # 规模
@@ -103,8 +108,7 @@ def get_nav_history(code, pages=2, page_size=250):
     for page in range(1, pages + 1):
         params = {"FCODE": code, "pageIndex": page, "pageSize": page_size,
                   **EM_COMMON_PARAMS}
-        resp = requests.get(url, params=params, headers=HEADERS, timeout=10)
-        rows = resp.json().get("Datas") or []
+        rows = _get_json(url, params).get("Datas") or []
         if not rows:
             break  # 没有更多数据了
         for r in rows:
@@ -155,14 +159,85 @@ def _minus_months(d, months):
     return date(year, month, day)
 
 
+def calc_sip(history, amount=1000, freq="month", years=2):
+    """
+    定投收益模拟：从 N 年前开始，按固定频率每次投入 amount 元，返回：
+    {
+        'invested': 累计投入, 'value': 当前市值, 'profit': 收益, 'pct': 收益率%,
+        'count': 定投次数, 'start': 开始日期, 'end': 结束日期,
+        'series': [[日期, 累计投入, 当时市值], ...]  # 画图用
+    }
+    买入规则：到扣款日后，按之后第一个交易日的净值买入；早于首个净值日的扣款日跳过；
+    数据不足返回 None。
+    """
+    points = [(datetime.strptime(h["date"], "%Y-%m-%d").date(), h["nav"])
+              for h in history if h["date"] and h["nav"]]
+    if len(points) < 2:
+        return None
+    end_date, end_nav = points[-1]
+    start = _minus_months(end_date, years * 12)
+
+    # 生成扣款日序列：每周/每两周按天数推，每月按月份推
+    step_days = {"week": 7, "biweek": 14}.get(freq)
+    schedule = []
+    if step_days is None:
+        # 每月：以开始日为锚点推算，避免 2 月天数少导致扣款日越推越靠前
+        k = 0
+        while True:
+            d = _plus_months(start, k)
+            if d > end_date:
+                break
+            schedule.append(d)
+            k += 1
+    else:
+        d = start
+        while d <= end_date:
+            schedule.append(d)
+            d += timedelta(days=step_days)
+
+    invested, shares, count = 0.0, 0.0, 0
+    series = []
+    i = 0  # 净值游标：points 按日期升序，扣款日也升序，只需往前走不回退
+    first_date = points[0][0]
+    for d in schedule:
+        if d < first_date:
+            continue  # 基金还没成立/没有净值数据，跳过，否则会重复按第一天净值买入
+        while i < len(points) and points[i][0] < d:
+            i += 1
+        if i >= len(points):
+            break  # 扣款日之后没有净值数据了
+        buy_date, nav = points[i]
+        invested += amount
+        shares += amount / nav
+        count += 1
+        series.append([buy_date.isoformat(), round(invested, 2), round(shares * nav, 2)])
+    if not count:
+        return None
+    value = shares * end_nav
+    return {
+        "invested": round(invested, 2),
+        "value": round(value, 2),
+        "profit": round(value - invested, 2),
+        "pct": round((value / invested - 1) * 100, 2),
+        "count": count,
+        "start": series[0][0],
+        "end": end_date.isoformat(),
+        "series": series,
+    }
+
+
+def _plus_months(d, months):
+    """日期往后推 N 个月，复用 _minus_months 的月底天数处理"""
+    return _minus_months(d, -months)
+
+
 def get_hot_funds(codes):
     """首页用：一次查询多只基金的最新净值，返回列表"""
     url = "https://fundmobapi.eastmoney.com/FundMNewApi/FundMNFInfo"
     params = {"pageIndex": 1, "pageSize": len(codes),
               "Fcodes": ",".join(codes), **EM_COMMON_PARAMS}
-    resp = requests.get(url, params=params, headers=HEADERS, timeout=10)
     result = []
-    for row in resp.json().get("Datas") or []:
+    for row in _get_json(url, params).get("Datas") or []:
         result.append({
             "code": row.get("FCODE"),
             "name": row.get("SHORTNAME"),

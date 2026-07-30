@@ -42,6 +42,25 @@ def fund_detail(code):
                            history=history, recent=recent, intervals=intervals)
 
 
+@app.route("/sip/<code>")
+def sip(code):
+    """定投模拟页：/sip/161725?amount=1000&freq=month&years=2"""
+    info = fund_api.get_fund_info(code)
+    if info is None:
+        return render_template("404.html", code=code), 404
+    amount = request.args.get("amount", 1000, type=int) or 1000
+    amount = max(1, min(amount, 1000000))  # 每期金额限制在 1~100 万
+    freq = request.args.get("freq", "month")
+    if freq not in ("week", "biweek", "month"):
+        freq = "month"
+    years = max(1, min(request.args.get("years", 2, type=int) or 2, 5))  # 1~5 年
+    # 接口每页约 1 年数据，多取一页保证覆盖整个定投区间
+    history = fund_api.get_nav_history(code, pages=years + 1)
+    result = fund_api.calc_sip(history, amount=amount, freq=freq, years=years)
+    return render_template("sip.html", info=info, amount=amount,
+                           freq=freq, years=years, result=result)
+
+
 @app.route("/api/funds")
 def api_funds():
     """给首页"我的自选"用的小接口：/api/funds?codes=161725,005827 返回 JSON"""
