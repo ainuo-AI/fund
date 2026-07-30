@@ -20,6 +20,27 @@
     </div>
 </section>
 
+<!-- 区间涨跌幅 -->
+{% if intervals %}
+<section>
+    <h2>区间涨跌幅</h2>
+    <table class="data-table">
+        <thead>
+            <tr>{% for label, pct in intervals %}<th>{{ label }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+            <tr>
+                {% for label, pct in intervals %}
+                <td class="{{ 'up' if (pct or 0) >= 0 else 'down' }}">
+                    {{ '%+.2f%%' % pct if pct is not none else '--' }}
+                </td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+</section>
+{% endif %}
+
 <!-- 净值走势图 -->
 <section>
     <h2>净值走势</h2>

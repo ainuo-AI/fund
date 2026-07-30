@@ -37,8 +37,9 @@ def fund_detail(code):
         return render_template("404.html", code=code), 404
     history = fund_api.get_nav_history(code)
     recent = history[-30:][::-1]  # 表格只显示最近 30 条，最新在前
+    intervals = fund_api.calc_interval_returns(history)
     return render_template("fund.html", info=info,
-                           history=history, recent=recent)
+                           history=history, recent=recent, intervals=intervals)
 
 
 @app.route("/api/funds")

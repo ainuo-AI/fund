@@ -10,6 +10,8 @@ fund_api.py —— 基金数据层
   - 新浪财经（stock.finance.sina.com.cn）：基金概况（类型、规模、公司等）
 """
 
+from datetime import date, datetime
+
 import requests
 
 # 所有请求共用的请求头：User-Agent 模拟浏览器，避免被当成爬虫拒绝
@@ -115,6 +117,42 @@ def get_nav_history(code, pages=2, page_size=250):
     # 接口返回是"最新在前"，画图和展示都需要"最早在前"，所以翻转
     history.reverse()
     return history
+
+
+def calc_interval_returns(history):
+    """
+    根据历史净值（日期升序）计算区间涨跌幅，返回：
+    [('近1月', 2.35), ('近3月', None), ...]，None 表示历史数据不够算不出来。
+    算法：以最新净值为终点，找目标日期当天或之前最近的一个净值做起点。
+    """
+    points = [(datetime.strptime(h["date"], "%Y-%m-%d").date(), h["nav"])
+              for h in history if h["date"] and h["nav"]]
+    if len(points) < 2:
+        return []
+    end_date, end_nav = points[-1]
+    results = []
+    for label, months in [("近1月", 1), ("近3月", 3), ("近6月", 6), ("近1年", 12)]:
+        target = _minus_months(end_date, months)
+        # 目标日期当天或之前最近的一个交易日净值
+        base = None
+        for d, nav in points:
+            if d <= target:
+                base = nav
+            else:
+                break
+        pct = round((end_nav / base - 1) * 100, 2) if base else None
+        results.append((label, pct))
+    return results
+
+
+def _minus_months(d, months):
+    """日期往前推 N 个月（不引入第三方库，手工换算年月）"""
+    month = d.month - months
+    year = d.year + (month - 1) // 12
+    month = (month - 1) % 12 + 1
+    day = min(d.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+                      31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    return date(year, month, day)
 
 
 def get_hot_funds(codes):
