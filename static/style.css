@@ -134,6 +134,19 @@ h2 { margin: 28px 0 14px; font-size: 18px; }
 .compare-form button:hover { background: #1557b0; }
 .compare-link { margin-left: 10px; }
 
+/* 定投模拟页参数表单：文字、输入框、下拉框横向排一排，字号对齐 */
+.sip-form { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; }
+.sip-form input, .sip-form select {
+    padding: 8px 10px; font-size: 14px; font-family: inherit;
+    border: 1px solid #ddd; border-radius: 6px; outline: none; background: #fff;
+}
+.sip-form input:focus, .sip-form select:focus { border-color: #1a73e8; }
+.sip-form button {
+    padding: 8px 20px; font-size: 14px; border: none; background: #1a73e8;
+    color: #fff; border-radius: 6px; cursor: pointer;
+}
+.sip-form button:hover { background: #1557b0; }
+
 /* 对比页"按名称搜索添加" */
 .add-fund { position: relative; max-width: 560px; margin-top: 10px; }
 .add-fund input {
