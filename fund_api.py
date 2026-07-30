@@ -159,23 +159,26 @@ def _minus_months(d, months):
     return date(year, month, day)
 
 
-def calc_sip(history, amount=1000, freq="month", years=2):
+def calc_sip(history, amount=1000, freq="month", years=2, start=None):
     """
-    定投收益模拟：从 N 年前开始，按固定频率每次投入 amount 元，返回：
+    定投收益模拟：从 start 日期（缺省按 years 年从最新净值日往回推）开始，
+    按固定频率每次投入 amount 元，返回：
     {
         'invested': 累计投入, 'value': 当前市值, 'profit': 收益, 'pct': 收益率%,
-        'count': 定投次数, 'start': 开始日期, 'end': 结束日期,
+        'count': 定投次数, 'start': 首次买入日期, 'end': 结束日期,
+        'postponed': [{deduct: 扣款日, buy: 实际买入日}, ...],  # 休市顺延记录
         'series': [[日期, 累计投入, 当时市值], ...]  # 画图用
     }
-    买入规则：到扣款日后，按之后第一个交易日的净值买入；早于首个净值日的扣款日跳过；
-    数据不足返回 None。
+    买入规则：到扣款日后，按之后第一个交易日的净值买入（同一交易日只买一次，
+    多期顺延到不同交易日）；早于首个净值日的扣款日跳过；数据不足返回 None。
     """
     points = [(datetime.strptime(h["date"], "%Y-%m-%d").date(), h["nav"])
               for h in history if h["date"] and h["nav"]]
     if len(points) < 2:
         return None
     end_date, end_nav = points[-1]
-    start = _minus_months(end_date, years * 12)
+    if start is None:
+        start = _minus_months(end_date, years * 12)
 
     # 生成扣款日序列：每周/每两周按天数推，每月按月份推
     step_days = {"week": 7, "biweek": 14}.get(freq)
@@ -197,6 +200,7 @@ def calc_sip(history, amount=1000, freq="month", years=2):
 
     invested, shares, count = 0.0, 0.0, 0
     series = []
+    postponed = []  # 扣款日遇到休市/非交易日被顺延的记录，给图表标注用
     i = 0  # 净值游标：points 按日期升序，扣款日也升序，只需往前走不回退
     first_date = points[0][0]
     for d in schedule:
@@ -207,6 +211,9 @@ def calc_sip(history, amount=1000, freq="month", years=2):
         if i >= len(points):
             break  # 扣款日之后没有净值数据了
         buy_date, nav = points[i]
+        i += 1  # 本期已占用这个交易日，下期顺延到之后的交易日，避免两期买在同一天
+        if buy_date != d:
+            postponed.append({"deduct": d.isoformat(), "buy": buy_date.isoformat()})
         invested += amount
         shares += amount / nav
         count += 1
@@ -222,6 +229,7 @@ def calc_sip(history, amount=1000, freq="month", years=2):
         "count": count,
         "start": series[0][0],
         "end": end_date.isoformat(),
+        "postponed": postponed,
         "series": series,
     }
 

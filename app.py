@@ -4,6 +4,8 @@ app.py —— 网站入口（路由层）
 职责：接收浏览器请求 -> 调用 fund_api 拿数据 -> 渲染 HTML 模板返回。
 不直接写数据抓取逻辑，那些都在 fund_api.py 里。
 """
+from datetime import date, datetime
+
 from flask import Flask, render_template, request
 
 import fund_api
@@ -44,7 +46,7 @@ def fund_detail(code):
 
 @app.route("/sip/<code>")
 def sip(code):
-    """定投模拟页：/sip/161725?amount=1000&freq=month&years=2"""
+    """定投模拟页：/sip/161725?amount=1000&freq=month&start=2024-01-01（也可用 years=2）"""
     info = fund_api.get_fund_info(code)
     if info is None:
         return render_template("404.html", code=code), 404
@@ -53,12 +55,25 @@ def sip(code):
     freq = request.args.get("freq", "month")
     if freq not in ("week", "biweek", "month"):
         freq = "month"
+    # 开始日期：优先 URL 里的 start（YYYY-MM-DD）；没给就按 years 年兼容旧链接
+    start = None
+    start_str = request.args.get("start", "").strip()
+    if start_str:
+        try:
+            start = datetime.strptime(start_str, "%Y-%m-%d").date()
+        except ValueError:
+            start = None  # 格式不对当作没给
     years = max(1, min(request.args.get("years", 2, type=int) or 2, 5))  # 1~5 年
-    # 接口每页约 1 年数据，多取一页保证覆盖整个定投区间
-    history = fund_api.get_nav_history(code, pages=years + 1)
-    result = fund_api.calc_sip(history, amount=amount, freq=freq, years=years)
-    return render_template("sip.html", info=info, amount=amount,
-                           freq=freq, years=years, result=result)
+    # 接口每页约 1 年数据，按定投跨度估算要取几页（最多 6 页 ≈ 5 年）
+    span_days = (date.today() - start).days if start else years * 365
+    pages = max(1, min(span_days // 365 + 2, 6))
+    history = fund_api.get_nav_history(code, pages=pages)
+    if start is None and history:
+        end = datetime.strptime(history[-1]["date"], "%Y-%m-%d").date()
+        start = fund_api._minus_months(end, years * 12)
+    result = fund_api.calc_sip(history, amount=amount, freq=freq, start=start)
+    return render_template("sip.html", info=info, amount=amount, freq=freq,
+                           start=start.isoformat() if start else "", result=result)
 
 
 @app.route("/api/funds")

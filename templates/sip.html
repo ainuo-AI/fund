@@ -11,14 +11,12 @@
         <option value="biweek" {{ 'selected' if freq == 'biweek' }}>每两周</option>
         <option value="month" {{ 'selected' if freq == 'month' }}>每月</option>
     </select>
-    定投，坚持
-    <select name="years">
-        {% for y in [1, 2, 3, 4, 5] %}
-        <option value="{{ y }}" {{ 'selected' if years == y }}>{{ y }} 年</option>
-        {% endfor %}
-    </select>
+    定投，从
+    <input type="date" name="start" value="{{ start }}">
+    开始
     <button type="submit">开始模拟</button>
 </form>
+<p class="meta" style="margin-top:8px">开始日期最早可取近 5 年的数据；扣款日遇休市会自动顺延到下一个交易日。</p>
 
 {% if result %}
 <!-- 结果汇总 -->
@@ -43,6 +41,15 @@
 <!-- 投入本金 vs 市值走势 -->
 <div id="chart" style="width:100%;height:420px;margin-top:20px;"></div>
 
+{% if result.postponed %}
+<p class="meta" style="margin-top:10px">
+    ⚠ 以下扣款日不是交易日（休市/节假日），已顺延买入，图中用 ◆ 标出：
+    {% for p in result.postponed %}
+    {{ p.deduct }} → {{ p.buy }}{{ '；' if not loop.last }}
+    {% endfor %}
+</p>
+{% endif %}
+
 <p class="meta" style="margin-top:10px">
     说明：按扣款日之后第一个交易日的净值买入，未考虑申购赎回费用和分红，结果仅供学习参考。
 </p>
@@ -51,6 +58,8 @@
 <script>
     // series 是 [[日期, 累计投入, 当时市值], ...]
     const series = {{ result.series | tojson }};
+    // 休市顺延记录：[{deduct: 扣款日, buy: 实际买入日}, ...]
+    const postponed = {{ result.postponed | tojson }};
     const chart = echarts.init(document.getElementById('chart'));
     chart.setOption({
         tooltip: { trigger: 'axis' },
@@ -65,7 +74,21 @@
               lineStyle: { width: 1, type: 'dashed' } },
             { name: '当前市值', type: 'line', showSymbol: false,
               data: series.map(r => [r[0], r[2]]),
-              lineStyle: { width: 2 } }
+              lineStyle: { width: 2 },
+              // 在实际买入日打点标注"休市顺延"，悬停可看到原扣款日
+              markPoint: {
+                  symbol: 'diamond', symbolSize: 12,
+                  itemStyle: { color: '#e6a23c' },
+                  label: { show: false },
+                  tooltip: {
+                      formatter: p =>
+                          `扣款日 ${postponed[p.dataIndex].deduct} 遇休市<br>顺延至 ${postponed[p.dataIndex].buy} 买入`
+                  },
+                  data: postponed.map(p => {
+                      const row = series.find(r => r[0] === p.buy);
+                      return { coord: [p.buy, row ? row[2] : 0] };
+                  })
+              } }
         ]
     });
     window.addEventListener('resize', () => chart.resize());
