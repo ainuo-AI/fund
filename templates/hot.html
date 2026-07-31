@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}热门推荐 - 基金信息站{% endblock %}
+{% block content %}
+<h2>热门推荐：{{ types[fund_type] }}基金 · 按{{ sorts[sort] }}排序</h2>
+
+<!-- 推荐依据（排序维度）：点列头也可以切换 -->
+<p class="rank-filter">
+    推荐依据：
+    {% for key, label in sorts.items() %}
+    <a class="chip {{ 'chip-active' if sort == key }}"
+       href="/hot?sort={{ key }}&type={{ fund_type }}">{{ label }}</a>
+    {% endfor %}
+</p>
+<!-- 基金类型筛选 -->
+<p class="rank-filter">
+    基金类型：
+    {% for key, label in types.items() %}
+    <a class="chip {{ 'chip-active' if fund_type == key }}"
+       href="/hot?sort={{ sort }}&type={{ key }}">{{ label }}</a>
+    {% endfor %}
+</p>
+
+{% set cols = [('rzdf', '日涨幅', 'day'), ('zzf', '近1周', 'week'), ('1yzf', '近1月', 'month'),
+               ('3yzf', '近3月', 'month3'), ('6yzf', '近6月', 'month6'),
+               ('1nzf', '近1年', 'year'), ('jnzf', '今年来', 'this_year')] %}
+
+{% if ranks %}
+<div class="table-scroll">
+<table class="data-table rank-table">
+    <thead>
+        <tr>
+            <th>#</th><th>代码</th><th>名称</th><th>单位净值</th>
+            {% for key, label, field in cols %}
+            <th class="{{ 'sorted-col' if sort == key }}">
+                <a href="/hot?sort={{ key }}&type={{ fund_type }}">{{ label }}</a>
+            </th>
+            {% endfor %}
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in ranks %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ r.code }}</td>
+            <td><a href="/fund/{{ r.code }}">{{ r.name }}</a></td>
+            <td>{{ '%.4f' | format(r.nav) if r.nav is not none else '--' }}</td>
+            {% for key, label, field in cols %}
+            <td class="{{ 'sorted-col' if sort == key }}
+                        {{- ' up' if r[field] is not none and r[field] >= 0 else ' down' if r[field] is not none }}">
+                {{ '%+.2f%%' | format(r[field]) if r[field] is not none else '--' }}
+            </td>
+            {% endfor %}
+            <td><a class="btn" href="/fund/{{ r.code }}">详情</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+<p class="meta" style="margin-top:10px">
+    榜单来自天天基金排行（取前 20 名），按所选区间涨幅降序；涨跌幅为区间收益率，仅供参考，不构成投资建议。
+</p>
+{% else %}
+<p class="empty">暂时没有榜单数据，换个筛选条件试试？</p>
+{% endif %}
+{% endblock %}

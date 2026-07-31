@@ -96,6 +96,88 @@ def get_fund_info(code):
     return info
 
 
+# 排行榜可选的排序依据（推荐维度）：天天基金排行接口的 sc 参数 -> 中文名
+RANK_SORTS = {
+    "rzdf": "日涨幅",
+    "zzf": "近1周",
+    "1yzf": "近1月",
+    "3yzf": "近3月",
+    "6yzf": "近6月",
+    "1nzf": "近1年",
+    "jnzf": "今年来",
+}
+
+# 排行榜可选的基金类型：接口的 ft 参数 -> 中文名
+RANK_TYPES = {
+    "all": "全部",
+    "gp": "股票型",
+    "hh": "混合型",
+    "zs": "指数型",
+    "zq": "债券型",
+    "qdii": "QDII",
+    "fof": "FOF",
+}
+
+
+def get_fund_rank(sort="1yzf", fund_type="all", top=20):
+    """
+    天天基金排行榜：按某个区间涨幅排序，取前 top 只，返回：
+    [{'code': '161725', 'name': '招商中证白酒...', 'nav': 0.5438,
+      'day': 0.8, 'week': 2.58, 'month': 28.53, 'month3': -9.37,
+      'month6': -15.2, 'year': -6.93, 'this_year': -9.2, ...}, ...]
+
+    sort 取 RANK_SORTS 的键，fund_type 取 RANK_TYPES 的键。
+    接口返回的是 JS 片段（var rankData = {...}），不是纯 JSON，用正则取 datas 数组。
+    """
+    import json
+    import re
+
+    end = date.today()
+    start = _minus_months(end, 12)  # 排行区间取近一年，近1周的榜也用这个区间
+    url = "https://fund.eastmoney.com/data/rankhandler.aspx"
+    params = {
+        "op": "ph", "dt": "kf", "ft": fund_type, "rs": "", "gs": "0",
+        "sc": sort, "st": "desc",
+        "sd": start.isoformat(), "ed": end.isoformat(),
+        "qdii": "", "tabSubtype": ",,,,,",
+        "pi": 1, "pn": top, "dx": 1, "v": 0.5,
+    }
+    headers = {**HEADERS, "Referer": "https://fund.eastmoney.com/data/fundranking.html"}
+    text = None
+    for attempt in range(2):
+        try:
+            r = requests.get(url, params=params, headers=headers, timeout=10)
+            text = r.content.decode("utf-8", errors="replace")
+            break
+        except requests.RequestException:
+            if attempt == 1:
+                raise
+    match = re.search(r"datas\s*:\s*(\[.*?\])\s*,\s*allRecords", text, re.S)
+    if not match:
+        return []
+    datas = json.loads(match.group(1))  # datas 是合法的 JSON 字符串数组
+    ranks = []
+    for item in datas:
+        f = item.split(",")
+        # 字段顺序：0代码 1名称 2拼音 3日期 4单位净值 5累计净值 6日涨幅
+        #           7近1周 8近1月 9近3月 10近6月 11近1年 ... 14今年来 15成立来 16成立日期
+        if len(f) < 17:
+            continue
+        ranks.append({
+            "code": f[0],
+            "name": f[1],
+            "nav": _to_float(f[4]),
+            "day": _to_float(f[6]),
+            "week": _to_float(f[7]),
+            "month": _to_float(f[8]),
+            "month3": _to_float(f[9]),
+            "month6": _to_float(f[10]),
+            "year": _to_float(f[11]),
+            "this_year": _to_float(f[14]),
+        })
+    return ranks
+
+
 def get_nav_history(code, pages=2, page_size=250):
     """
     获取历史净值，返回按日期升序的列表：

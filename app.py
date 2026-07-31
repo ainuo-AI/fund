@@ -93,6 +93,20 @@ def sip(code):
                            result=result)
 
 
+@app.route("/hot")
+def hot():
+    """热门推荐榜：/hot?sort=1yzf&type=gp 按区间涨幅排序取前 20 只"""
+    sort = request.args.get("sort", "1yzf")
+    if sort not in fund_api.RANK_SORTS:
+        sort = "1yzf"
+    fund_type = request.args.get("type", "all")
+    if fund_type not in fund_api.RANK_TYPES:
+        fund_type = "all"
+    ranks = fund_api.get_fund_rank(sort=sort, fund_type=fund_type)
+    return render_template("hot.html", ranks=ranks, sort=sort, fund_type=fund_type,
+                           sorts=fund_api.RANK_SORTS, types=fund_api.RANK_TYPES)
+
+
 @app.route("/api/funds")
 def api_funds():
     """给首页"我的自选"用的小接口：/api/funds?codes=161725,005827 返回 JSON"""
