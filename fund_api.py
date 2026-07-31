@@ -440,6 +440,60 @@ def _to_float(value):
         return None
 
 
+# ===== 财经要闻（7x24 快讯） =====
+
+# 判定"股市相关"的关键词：命中正文或标签就高亮，方便快速找到可能影响股票涨跌的新闻
+STOCK_NEWS_KEYWORDS = ["A股", "股市", "股票", "涨停", "跌停", "沪指", "上证", "深成指",
+                       "创业板", "科创板", "港股", "美股", "大盘", "市场"]
+
+# 快讯列表缓存（60 秒）：页面渲染和 AI 分析接口都会调 get_market_news，别重复请求新浪
+_news_cache = {"time": 0, "data": []}
+
+
+def get_market_news(count=30):
+    """
+    新浪财经 7x24 快讯：最近的财经新闻，返回：
+    [{'id': 5019867, 'time': '2026-08-01 03:44:02', 'text': '……',
+      'url': 'https://finance.sina.com.cn/7x24/...',   # 原文链接，可能没有
+      'tags': ['市场'], 'stock_related': True}, ...]
+
+    id 是快讯唯一编号（AI 分析结果按它缓存）；stock_related=True 表示正文/标签
+    命中股市关键词，前端高亮显示。结果缓存 60 秒。
+    """
+    import json
+    import time
+    if time.time() - _news_cache["time"] < 60:
+        return _news_cache["data"]
+    url = "https://zhibo.sina.com.cn/api/zhibo/feed"
+    params = {"page": 1, "page_size": count, "zhibo_id": 152,
+              "tag_id": 0, "dire": "f", "dpc": 1, "pagesize": count}
+    data = _get_json(url, params)
+    items = ((data.get("result") or {}).get("data") or {}).get("feed", {}).get("list") or []
+    news = []
+    for item in items:
+        text = (item.get("rich_text") or "").strip()
+        if not text:
+            continue
+        tags = [t.get("name", "") for t in item.get("tag") or []]
+        # ext 是嵌套的 JSON 字符串，里面有原文链接 docurl
+        try:
+            doc_url = json.loads(item.get("ext") or "{}").get("docurl") or ""
+        except (TypeError, ValueError):
+            doc_url = ""
+        related = any(k in text for k in STOCK_NEWS_KEYWORDS) or \
+            any(k in t for k in STOCK_NEWS_KEYWORDS for t in tags)
+        news.append({
+            "id": item.get("id"),
+            "time": item.get("create_time") or "",
+            "text": text,
+            "url": doc_url,
+            "tags": tags,
+            "stock_related": related,
+        })
+    _news_cache.update({"time": time.time(), "data": news})
+    return news
+
+
 def _strip_html(text):
     """新浪接口的基金经理字段带 <a> 标签，去掉标签只留名字"""
     if not text:

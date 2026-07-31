@@ -180,4 +180,24 @@ h2 { margin: 28px 0 14px; font-size: 18px; }
 .table-scroll { overflow-x: auto; border-radius: 10px; }
 .rank-table th, .rank-table td { white-space: nowrap; }
 
+/* 财经要闻页 */
+.news-list { list-style: none; margin: 0; padding: 0; background: #fff;
+    border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.news-item { display: flex; gap: 12px; padding: 12px 16px; font-size: 14px;
+    border-bottom: 1px solid #f0f0f0; line-height: 1.6; }
+.news-item:last-child { border-bottom: none; }
+.news-stock { background: #fff7f7; }  /* 股市相关：淡红底高亮 */
+.news-time { flex: none; color: #aaa; font-size: 13px; padding-top: 1px; }
+.news-body a { color: #333; text-decoration: none; }
+.news-body a:hover { color: #1a73e8; }
+.badge { display: inline-block; margin-left: 6px; padding: 0 6px; font-size: 12px;
+    color: #888; background: #f2f3f5; border-radius: 4px; vertical-align: 1px; }
+.badge-stock { color: #e64545; background: #fdecec; }
+/* AI 分析行 */
+.ai-line { margin-top: 4px; font-size: 13px; color: #777; }
+.badge-up { color: #e64545; background: #fdecec; }     /* 利好·看涨：红 */
+.badge-down { color: #1a9e54; background: #e8f7ee; }   /* 利空·看跌：绿 */
+.badge-flat { color: #888; background: #f2f3f5; }      /* 中性：灰 */
+.ai-industries { color: #1a73e8; }
+
 .footer { text-align: center; color: #aaa; font-size: 12px; padding: 24px; }

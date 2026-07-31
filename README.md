@@ -7,7 +7,8 @@
 ```
 jijin/
 ├── app.py            # 网站入口：定义路由（网址 -> 页面）
-├── fund_api.py       # 数据层：封装第三方接口，获取基金数据
+├── fund_api.py       # 数据层：封装第三方接口，获取基金数据、财经快讯
+├── ai_api.py         # AI 层：调用大模型分析新闻的行业影响（可选，需 .env 配 key）
 ├── templates/        # HTML 模板（Jinja2）
 │   ├── base.html     #   公共骨架：导航栏 + 页脚
 │   ├── index.html    #   首页：搜索框 + 热门基金卡片
@@ -15,6 +16,7 @@ jijin/
 │   ├── fund.html     #   基金详情页：信息 + 走势图 + 历史净值表
 │   ├── compare.html  #   基金对比页：多只基金涨跌幅同图对比
 │   ├── hot.html      #   热门推荐页：按区间涨幅排序的基金榜单
+│   ├── news.html     #   财经要闻页：7x24 快讯列表，股市相关高亮
 │   ├── sip.html      #   定投模拟页：参数表单 + 收益汇总 + 投入/市值走势图
 │   └── 404.html
 ├── static/
@@ -43,6 +45,8 @@ venv/Scripts/python app.py
 | `/fund/161725` | 基金详情（可加自选、去对比） | `fund_detail()` |
 | `/compare?codes=161725,005827` | 基金对比（最多 5 只） | `compare()` |
 | `/hot?sort=1yzf&type=gp` | 热门推荐榜（按区间涨幅排序） | `hot()` |
+| `/news` | 财经要闻（7x24 快讯，股市相关高亮） | `news()` |
+| `/api/news_analysis` | 新闻 AI 分析（JSON 接口，需配 key） | `api_news_analysis()` |
 | `/sip/161725?amount=1000&freq=month&start=2024-01-01` | 定投收益模拟 | `sip()` |
 | `/api/funds?codes=161725,...` | 批量查最新净值（JSON 接口） | `api_funds()` |
 | `/api/estimate/161725` | 实时估值（JSON 接口） | `api_estimate()` |
@@ -99,6 +103,35 @@ venv/Scripts/python app.py
 参数在网址里（`sort`、`type`），榜单可以收藏和分享。
 注：免费公开接口没有"资金流动量"数据，所以推荐维度以各区间涨幅为主。
 
+## 财经要闻
+
+导航栏"财经要闻"进入 `/news`：展示新浪财经 7×24 快讯最新 30 条（最新在前），
+正文或标签命中股市关键词（A股、涨停、沪指、创业板、港股、美股等，见 `fund_api.STOCK_NEWS_KEYWORDS`）
+的条目会加红色"股市"徽章并淡红底高亮，方便快速找到可能影响股票涨跌的新闻。
+点击条目可跳转新浪原文。关键词识别只是粗筛，仅供参考，不构成投资建议。
+
+### AI 新闻分析（可选）
+
+配置大模型 API Key 后，每条新闻下方会显示 AI 的分析：影响哪些行业、利好（看涨）/
+利空（看跌）/中性、一句话理由。新闻本身全部来自新浪官方接口（带原文链接可核验），
+AI 只阅读已有新闻做点评，不生成新闻内容。
+
+启用方法：把 `.env.example` 复制为 `.env`，填入 API Key（`.env` 已被 git 忽略，不会上传）：
+
+```
+AI_API_KEY=sk-xxx
+AI_BASE_URL=https://api.deepseek.com   # 默认 DeepSeek；Kimi 开放平台填 https://api.moonshot.cn/v1
+AI_MODEL=deepseek-chat                 # Kimi 填 moonshot-v1-8k，OpenAI 填 gpt-4o-mini
+                                       # Kimi Code 编程套餐（sk-kimi- 前缀）：
+                                       # AI_BASE_URL=https://api.kimi.com/coding/v1, AI_MODEL=kimi-k2
+```
+
+可选 `AI_TEMPERATURE=0.2`；不传时用模型默认值（kimi-k2 只允许默认温度，传了会报错）。
+
+实现要点（`ai_api.py`）：整页新闻一次性批量调用（30 条约 2~3k tokens，几分钱），
+按快讯 id 做内存缓存，刷新页面不重复扣费；分析由前端异步加载（`/api/news_analysis`），
+不阻塞页面打开；没配 key 或调用失败时页面照常工作。AI 判断只是文本解读的推测，不构成投资建议。
+
 ## 数据来源
 
 均为公开免费接口，仅用于学习：
@@ -109,8 +142,5 @@ venv/Scripts/python app.py
 - 天天基金 F10 持仓页：前十大重仓股（实时估值用）
 - 东方财富实时行情接口：个股涨跌幅（实时估值用）
 - 新浪财经：基金概况（类型、规模、公司、经理）
+- 新浪财经 7×24 快讯：财经要闻
 
-## 可以练手的改进方向
-
-1. 首页热门基金换成你自己关注的代码（改 `app.py` 里的 `HOT_FUND_CODES`）
-2. 给定投模拟加分红再投资选项（用累计净值 `acc_nav` 计算）

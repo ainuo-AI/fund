@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}财经要闻 - 基金信息站{% endblock %}
+{% block content %}
+<h2>财经要闻</h2>
+
+<p class="meta">
+    来源：新浪财经 7×24 快讯，最新在前；带 <span class="badge badge-stock">股市</span>
+    标记的是按关键词自动识别、可能影响股票涨跌的新闻，仅供参考。
+    AI 分析是对新闻文本的解读推测，不构成投资建议。
+</p>
+
+{% if news %}
+<ul class="news-list">
+    {% for n in news %}
+    <li class="news-item {{ 'news-stock' if n.stock_related }}">
+        <span class="news-time">{{ n.time[5:16] }}</span>
+        <span class="news-body">
+            {% if n.url %}
+            <a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.text }}</a>
+            {% else %}
+            {{ n.text }}
+            {% endif %}
+            {% if n.stock_related %}<span class="badge badge-stock">股市</span>{% endif %}
+            {% for t in n.tags %}<span class="badge">{{ t }}</span>{% endfor %}
+            <!-- AI 分析结果由 JS 异步填到这里 -->
+            <div class="ai-line" data-id="{{ n.id }}"></div>
+        </span>
+    </li>
+    {% endfor %}
+</ul>
+
+<script>
+    // ===== AI 分析：页面打开后异步请求，不阻塞新闻列表的渲染 =====
+    const IMPACT_BADGE = {
+        '利好': ['badge-up', '利好·看涨'],
+        '利空': ['badge-down', '利空·看跌'],
+        '中性': ['badge-flat', '中性'],
+    };
+
+    async function loadAnalysis() {
+        const lines = document.querySelectorAll('.ai-line');
+        try {
+            const resp = await fetch('/api/news_analysis');
+            const data = await resp.json();
+            if (!data.configured) {
+                lines.forEach(el => el.textContent =
+                    '在 .env 填入 AI_API_KEY 后，这里会显示 AI 对每条新闻的行业影响分析');
+                return;
+            }
+            if (!data.analysis) {
+                lines.forEach(el => el.textContent = 'AI 分析暂时不可用，请稍后刷新重试');
+                return;
+            }
+            lines.forEach(el => {
+                const a = data.analysis[el.dataset.id];
+                if (!a) return;  // 这条模型没返回，留空
+                const [cls, label] = IMPACT_BADGE[a.impact] || IMPACT_BADGE['中性'];
+                el.innerHTML = '';
+                const badge = document.createElement('span');
+                badge.className = 'badge ' + cls;
+                badge.textContent = label;
+                el.appendChild(badge);
+                const text = document.createElement('span');
+                text.innerHTML = ` 影响行业：<span class="ai-industries"></span> — <span class="ai-reason"></span>`;
+                text.querySelector('.ai-industries').textContent = a.industries;
+                text.querySelector('.ai-reason').textContent = a.reason;
+                el.appendChild(text);
+            });
+        } catch (e) {
+            lines.forEach(el => el.textContent = 'AI 分析加载失败');
+        }
+    }
+    loadAnalysis();
+</script>
+{% else %}
+<p class="empty">暂时没有新闻，稍后再来看看？</p>
+{% endif %}
+{% endblock %}

@@ -8,6 +8,7 @@ from datetime import date, datetime
 
 from flask import Flask, render_template, request
 
+import ai_api
 import fund_api
 
 app = Flask(__name__)
@@ -105,6 +106,20 @@ def hot():
     ranks = fund_api.get_fund_rank(sort=sort, fund_type=fund_type)
     return render_template("hot.html", ranks=ranks, sort=sort, fund_type=fund_type,
                            sorts=fund_api.RANK_SORTS, types=fund_api.RANK_TYPES)
+
+
+@app.route("/news")
+def news():
+    """财经要闻页：7x24 快讯列表，股市相关的条目高亮"""
+    return render_template("news.html", news=fund_api.get_market_news())
+
+
+@app.route("/api/news_analysis")
+def api_news_analysis():
+    """AI 分析 JSON 接口：/news 页面加载后由 JS 异步调用，不阻塞页面打开。
+    返回 {analysis: {新闻id: {industries, impact, reason}} 或 None, configured: bool}"""
+    news = fund_api.get_market_news()  # 走 60 秒缓存，不重复请求新浪
+    return {"analysis": ai_api.analyze_news(news), "configured": ai_api.is_configured()}
 
 
 @app.route("/api/funds")
