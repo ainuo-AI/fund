@@ -135,6 +135,12 @@ def compare():
     return render_template("compare.html", funds=funds, codes=codes)
 
 
+@app.route("/api/estimate/<code>")
+def api_estimate(code):
+    """实时估值 JSON 接口：/api/estimate/161725，供详情页 JS 定时刷新"""
+    return {"estimate": fund_api.get_fund_estimate(code)}
+
+
 @app.route("/api/search")
 def api_search():
     """给对比页"按名称搜索添加"用的 JSON 接口：/api/search?q=白酒"""

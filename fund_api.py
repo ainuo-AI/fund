@@ -338,6 +338,100 @@ def get_hot_funds(codes):
     return result
 
 
+# ===== 实时估值（根据重仓股自己估算） =====
+# 2026 年起监管要求各平台下架官方"盘中估值"，公开估值接口已全部失效。
+# 这里按同样的原理自算：最新披露的前十大重仓股 × 股票实时涨跌幅，加权估算当日净值涨跌。
+# 持仓是季度披露数据，和实盘有偏差，结果仅供参考。
+
+_holdings_cache = {}  # {基金代码: 持仓数据}，持仓一个季度才更新一次，缓存避免重复抓取
+
+
+def get_stock_holdings(code):
+    """
+    获取基金最新披露的前十大重仓股（天天基金 F10 持仓页，返回 JS 包裹的 HTML，正则解析），返回：
+    {'date': '2026-06-30', 'stocks': [
+        {'secid': '1.600519', 'code': '600519', 'name': '贵州茅台', 'weight': 17.28}, ...]}
+    secid 是东财行情接口用的"市场.代码"格式（直接取自持仓页的链接，A股/港股通用）。
+    纯债基等没有股票持仓的基金 stocks 为空列表。
+    """
+    if code in _holdings_cache:
+        return _holdings_cache[code]
+    import re
+    url = "https://fundf10.eastmoney.com/FundArchivesDatas.aspx"
+    headers = {**HEADERS, "Referer": f"https://fundf10.eastmoney.com/jjcc_{code}.html"}
+    text = requests.get(url, params={"type": "jjcc", "code": code, "topline": 10},
+                        headers=headers, timeout=10).text
+    date_match = re.search(r"截止至：<font class='px12'>([\d-]+)</font>", text)
+    # 接口会返回多个季度的表格（最新在前），只取最近一个季度，避免重复计算
+    blocks = text.split("季度股票投资明细")
+    section = blocks[1] if len(blocks) > 1 else text
+    stocks = []
+    for row in section.split("<tr>"):  # 表头里没有持仓链接，逐行扫描即可
+        m = re.search(r"unify/r/([\d.]+)'>(\w+)</a></td>"
+                      r"<td class='tol'><a href='[^']*'>([^<]+)</a>", row)
+        w = re.search(r"<td class='tor'>([\d.]+)%</td>", row)  # 占净值比例列
+        if m and w:
+            stocks.append({"secid": m.group(1), "code": m.group(2),
+                           "name": m.group(3), "weight": _to_float(w.group(1))})
+    result = {"date": date_match.group(1) if date_match else "--", "stocks": stocks}
+    _holdings_cache[code] = result
+    return result
+
+
+def get_realtime_quotes(secids):
+    """
+    东财实时行情：批量查股票涨跌幅，返回 {股票代码: 涨跌幅%}。
+    接口的 f3 字段是涨跌幅×100 的整数；停牌/缺数据时按 0 处理。
+    """
+    url = "https://push2.eastmoney.com/api/qt/ulist.np/get"
+    data = _get_json(url, {"secids": ",".join(secids), "fields": "f12,f3"})
+    quotes = {}
+    for row in ((data.get("data") or {}).get("diff") or []):
+        f3 = row.get("f3")
+        quotes[row.get("f12")] = f3 / 100 if isinstance(f3, (int, float)) else 0.0
+    return quotes
+
+
+def get_fund_estimate(code):
+    """
+    估算基金当日净值，返回：
+    {'est_nav': 0.55, 'est_pct': 1.23, 'nav': '0.5438', 'nav_date': '2026-07-30',
+     'holdings_date': '2026-06-30', 'time': '14:35:02'}
+
+    算法：估算涨幅 = Σ(重仓股涨跌幅 × 占净值比例) / 100
+          估算净值 = 最新净值 × (1 + 估算涨幅/100)
+    只算了前十大重仓股，其余持仓按不涨不跌处理；没有股票持仓或拿不到净值时返回 None。
+    """
+    nav_url = "https://fundmobapi.eastmoney.com/FundMNewApi/FundMNFInfo"
+    nav_params = {"pageIndex": 1, "pageSize": 1, "Fcodes": code, **EM_COMMON_PARAMS}
+    nav_rows = _get_json(nav_url, nav_params).get("Datas") or []
+    if not nav_rows:
+        return None
+    row = nav_rows[0]
+    nav = _to_float(row.get("NAV"))
+    holdings = get_stock_holdings(code)
+    stocks = holdings["stocks"]
+    if not nav or not stocks:
+        return None  # 纯债基/货币基金等没有股票持仓，不支持估算
+    try:
+        # 持仓日期太旧（如债基挂着十年前的零星持仓）说明不是股票类基金，估算没意义
+        h_date = datetime.strptime(holdings["date"], "%Y-%m-%d").date()
+        if (date.today() - h_date).days > 366:
+            return None
+    except ValueError:
+        return None  # 持仓日期解析失败，同样不支持
+    quotes = get_realtime_quotes([s["secid"] for s in stocks])
+    est_pct = sum(s["weight"] * quotes.get(s["code"], 0.0) for s in stocks) / 100
+    return {
+        "est_nav": round(nav * (1 + est_pct / 100), 4),
+        "est_pct": round(est_pct, 2),
+        "nav": row.get("NAV") or "--",
+        "nav_date": row.get("PDATE") or "--",
+        "holdings_date": holdings["date"],
+        "time": datetime.now().strftime("%H:%M:%S"),
+    }
+
+
 def _to_float(value):
     """把接口返回的字符串安全地转成浮点数，转不了就返回 None"""
     try:

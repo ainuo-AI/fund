@@ -19,6 +19,13 @@
             日涨幅 {{ info.change_pct }}%　累计净值 {{ info.acc_nav }}　{{ info.nav_date }}
         </div>
     </div>
+    <!-- 实时估值：根据重仓股实时行情自己估算，JS 定时刷新 -->
+    <div class="nav-box est-box">
+        <div class="est-label">实时估值</div>
+        <div class="nav-main" id="estNav">--</div>
+        <div class="nav-sub" id="estSub">加载中…</div>
+        <div class="est-tip" id="estTip"></div>
+    </div>
 </section>
 
 <!-- 区间涨跌幅 -->
@@ -130,5 +137,40 @@
         btn.classList.toggle('faved', faved);
     }
     renderFavBtn();  // 页面加载时先刷一次，让按钮显示正确状态
+
+    // ===== 实时估值：调 /api/estimate 接口，交易时段每 30 秒自动刷新 =====
+    function isTradingTime() {
+        const now = new Date();
+        const day = now.getDay();
+        if (day === 0 || day === 6) return false;  // 周末不刷新
+        const t = now.getHours() * 60 + now.getMinutes();
+        return t >= 570 && t <= 900;  // 9:30 ~ 15:00
+    }
+
+    async function loadEstimate() {
+        const navEl = document.getElementById('estNav');
+        const subEl = document.getElementById('estSub');
+        const tipEl = document.getElementById('estTip');
+        try {
+            const resp = await fetch('/api/estimate/' + FUND_CODE);
+            const data = (await resp.json()).estimate;
+            if (!data) {  // 债基等没有股票持仓，接口返回 null
+                navEl.textContent = '--';
+                subEl.textContent = '无近期股票持仓，不支持估算';
+                subEl.className = 'nav-sub';
+                return;
+            }
+            navEl.textContent = data.est_nav;
+            const sign = data.est_pct >= 0 ? '+' : '';
+            subEl.textContent = `估算涨跌 ${sign}${data.est_pct}%　${data.time}`;
+            subEl.className = 'nav-sub ' + (data.est_pct >= 0 ? 'up' : 'down');
+            tipEl.textContent = `按 ${data.holdings_date} 披露的重仓股估算，与实盘有偏差，仅供参考`;
+        } catch (e) {
+            subEl.textContent = '估值加载失败，稍后自动重试';
+            subEl.className = 'nav-sub';
+        }
+    }
+    loadEstimate();
+    if (isTradingTime()) setInterval(loadEstimate, 30000);
 </script>
 {% endblock %}
