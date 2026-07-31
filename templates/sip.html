@@ -12,11 +12,11 @@
         <option value="month" {{ 'selected' if freq == 'month' }}>每月</option>
     </select>
     定投，从
-    <input type="date" name="start" value="{{ start }}">
+    <input type="date" name="start" value="{{ start }}" min="{{ min_start }}" max="{{ max_start }}">
     开始
     <button type="submit">开始模拟</button>
 </form>
-<p class="meta" style="margin-top:8px">开始日期最早可取近 5 年的数据；扣款日遇休市会自动顺延到下一个交易日。</p>
+<p class="meta" style="margin-top:8px">开始日期最早为 {{ min_start }}（基金成立日与近 5 年取较晚者）；扣款日遇休市会自动顺延到下一个交易日。</p>
 
 {% if result %}
 <!-- 结果汇总 -->

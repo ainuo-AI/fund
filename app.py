@@ -68,12 +68,29 @@ def sip(code):
     span_days = (date.today() - start).days if start else years * 365
     pages = max(1, min(span_days // 365 + 2, 6))
     history = fund_api.get_nav_history(code, pages=pages)
+    # 可选的最早开始日期：基金成立日和"近 5 年"（接口最多取 6 页 ≈ 5 年）取较晚者
+    min_start = fund_api._minus_months(date.today(), 60)
+    try:
+        inception = datetime.strptime(info["start_date"], "%Y-%m-%d").date()
+        min_start = max(min_start, inception)
+    except (TypeError, ValueError):
+        pass  # 成立日期拿不到就只按近 5 年限制
     if start is None and history:
         end = datetime.strptime(history[-1]["date"], "%Y-%m-%d").date()
         start = fund_api._minus_months(end, years * 12)
+    # 开始日期不能早于基金首个净值日，早于则钳制到 min_start
+    if start is not None and start < min_start:
+        start = min_start
+    # 开始日期也不能晚于今天，晚于则钳制到今天
+    max_start = date.today()
+    if start is not None and start > max_start:
+        start = max_start
     result = fund_api.calc_sip(history, amount=amount, freq=freq, start=start)
     return render_template("sip.html", info=info, amount=amount, freq=freq,
-                           start=start.isoformat() if start else "", result=result)
+                           start=start.isoformat() if start else "",
+                           min_start=min_start.isoformat(),
+                           max_start=max_start.isoformat(),
+                           result=result)
 
 
 @app.route("/api/funds")
