@@ -70,9 +70,10 @@
 
 {% if funds %}
 <script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+<script src="{{ url_for('static', filename='echarts-theme.js') }}"></script>
 <script>
     const funds = {{ funds | tojson }};
-    const chart = echarts.init(document.getElementById('chart'));
+    const chart = echarts.init(document.getElementById('chart'), 'terminal');
     chart.setOption({
         tooltip: { trigger: 'axis' },
         legend: {},

@@ -382,9 +382,14 @@ def get_realtime_quotes(secids):
     """
     东财实时行情：批量查股票涨跌幅，返回 {股票代码: 涨跌幅%}。
     接口的 f3 字段是涨跌幅×100 的整数；停牌/缺数据时按 0 处理。
+    该接口对部分环境的 HTTPS 请求会直接断开连接（HTTP 正常），失败时回退 HTTP。
     """
     url = "https://push2.eastmoney.com/api/qt/ulist.np/get"
-    data = _get_json(url, {"secids": ",".join(secids), "fields": "f12,f3"})
+    params = {"secids": ",".join(secids), "fields": "f12,f3"}
+    try:
+        data = _get_json(url, params)
+    except requests.RequestException:
+        data = _get_json(url.replace("https://", "http://", 1), params)
     quotes = {}
     for row in ((data.get("data") or {}).get("diff") or []):
         f3 = row.get("f3")

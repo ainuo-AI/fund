@@ -79,6 +79,7 @@
 
 <!-- 画图：把 Python 列表转成 JSON 交给 ECharts -->
 <script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+<script src="{{ url_for('static', filename='echarts-theme.js') }}"></script>
 <script>
     // tojson 过滤器会把 history 安全地转成 JS 数组
     const history = {{ history | tojson }};
@@ -86,7 +87,7 @@
     const navs    = history.map(r => r.nav);
     const accNavs = history.map(r => r.acc_nav);
 
-    const chart = echarts.init(document.getElementById('chart'));
+    const chart = echarts.init(document.getElementById('chart'), 'terminal');
     chart.setOption({
         tooltip: { trigger: 'axis' },
         legend: { data: ['单位净值', '累计净值'] },

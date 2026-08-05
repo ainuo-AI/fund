@@ -114,7 +114,7 @@ def _call_llm(news_list, config):
             f"{config['base_url']}/chat/completions",
             headers={**HEADERS, "Authorization": f"Bearer {config['api_key']}"},
             json=payload,
-            timeout=120,  # 思考型模型分析 30 条新闻可能要 1 分多钟
+            timeout=300,  # 思考型模型（如 kimi-k2）分析 30 条新闻实测约 2 分钟，留足余量
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"]

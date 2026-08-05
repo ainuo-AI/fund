@@ -5,14 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}基金信息站{% endblock %}</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Crect x='2' y='2' width='12' height='3' fill='%23F28C00'/%3E%3Crect x='2' y='7' width='5' height='7' fill='%23FF4D4F'/%3E%3Crect x='9' y='7' width='5' height='7' fill='%2300C176'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <nav class="navbar">
-        <a class="brand" href="/">📈 基金信息站</a>
-        <a class="nav-link" href="/hot">热门推荐</a>
-        <a class="nav-link" href="/news">财经要闻</a>
+        <a class="brand" href="/">JJ<b>//</b>基金信息终端</a>
+        <a class="nav-link" href="/hot">[热门推荐]</a>
+        <a class="nav-link" href="/news">[财经要闻]</a>
         <!-- 顶部搜索框已移除：首页有大搜索框，这里重复了；搜索页仍可通过 /search?q= 访问 -->
+        <span class="nav-clock" id="navClock">--:--:--</span>
     </nav>
 
     <main class="container">
@@ -32,6 +34,16 @@
                 window.location.href = '/';
             }
         }
+
+        // 命令栏时钟：每秒刷新一次
+        function tickClock() {
+            const d = new Date();
+            const p = n => String(n).padStart(2, '0');
+            document.getElementById('navClock').textContent =
+                p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+        }
+        tickClock();
+        setInterval(tickClock, 1000);
     </script>
 
     <footer class="footer">
